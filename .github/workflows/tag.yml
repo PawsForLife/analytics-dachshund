@@ -1,0 +1,99 @@
+# Tags each dashboard whenever a change to it is merged to main.
+#
+# For every folder under dashboards/ that changed, creates an annotated tag
+#   <dashboard>/<YYYY-MM-DD>-<short commit>      e.g. weekly-trading/2026-11-03-d70b1e9
+# A change under shared/ tags every dashboard, because they all depend on it.
+#
+# A tag records "this version was approved and merged". It does not mean the
+# version is live: record promotion separately (see the release checklist).
+#
+# Can also be run by hand (Actions tab > Tag dashboards > Run workflow) to tag
+# one named dashboard at the current commit of main.
+name: Tag dashboards
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "dashboards/**"
+      - "shared/**"
+  workflow_dispatch:
+    inputs:
+      dashboard:
+        description: "Dashboard folder name to tag at this commit (for example weekly-trading)"
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: tag-dashboards
+  cancel-in-progress: false
+
+jobs:
+  tag:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create tags
+        env:
+          BEFORE: ${{ github.event.before }}
+          INPUT_DASHBOARD: ${{ inputs.dashboard }}
+        run: |
+          set -euo pipefail
+
+          # Which dashboards does this change affect?
+          if [ -n "${INPUT_DASHBOARD:-}" ]; then
+            case "$INPUT_DASHBOARD" in
+              */*|.*|"") echo "::error::Invalid dashboard name: $INPUT_DASHBOARD"; exit 1 ;;
+            esac
+            [ -d "dashboards/$INPUT_DASHBOARD" ] || { echo "::error::No folder dashboards/$INPUT_DASHBOARD"; exit 1; }
+            DASHBOARDS="$INPUT_DASHBOARD"
+          else
+            ZERO="0000000000000000000000000000000000000000"
+            if [ -z "${BEFORE:-}" ] || [ "$BEFORE" = "$ZERO" ] || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+              # First push, or the previous commit is unavailable: use the files in this commit.
+              FILES="$(git show --name-only --pretty=format: "$GITHUB_SHA")"
+            else
+              FILES="$(git diff --name-only "$BEFORE" "$GITHUB_SHA")"
+            fi
+
+            if printf '%s\n' "$FILES" | grep -q '^shared/'; then
+              DASHBOARDS="$(ls -1 dashboards 2>/dev/null || true)"
+            else
+              DASHBOARDS="$(printf '%s\n' "$FILES" | sed -n 's#^dashboards/\([^/][^/]*\)/.*#\1#p' | sort -u)"
+            fi
+          fi
+
+          if [ -z "$DASHBOARDS" ]; then
+            echo "No dashboard changed. Nothing to tag."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          STAMP="$(date -u +%Y-%m-%d)"
+          SHORT="${GITHUB_SHA::7}"
+          SUBJECT="$(git log -1 --pretty=%s "$GITHUB_SHA")"
+
+          for NAME in $DASHBOARDS; do
+            # Skip anything that is not a dashboard folder at this commit (for example a deleted one).
+            if ! git cat-file -e "${GITHUB_SHA}:dashboards/${NAME}" 2>/dev/null; then
+              echo "Skipping $NAME: no folder at this commit."
+              continue
+            fi
+            TAG="${NAME}/${STAMP}-${SHORT}"
+            if git rev-parse -q --verify "refs/tags/${TAG}" >/dev/null; then
+              echo "Tag $TAG already exists. Skipping."
+              continue
+            fi
+            git tag -a "$TAG" "$GITHUB_SHA" -m "${NAME}: ${SUBJECT}" -m "Commit ${GITHUB_SHA}"
+            git push origin "refs/tags/${TAG}"
+            echo "Created tag $TAG"
+          done

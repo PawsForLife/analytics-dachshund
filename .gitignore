@@ -1,2 +1,11 @@
 # macOS
 .DS_Store
+
+# Python
+__pycache__/
+
+# Secrets and local configuration
+.env
+
+# Files saved here by Claude sessions
+Claude outputs/
