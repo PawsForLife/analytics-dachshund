@@ -26,6 +26,7 @@ analytics-dachshund/
 ├── dashboards/
 │   └── <dashboard-name>/      # one folder per dashboard
 │       └── README.md          # purpose, owner, data sources, refresh cadence, artifact link
+├── scripts/                   # repo tooling, e.g. scripts/dev-copy to make a private dev copy of a dashboard
 ├── shared/                    # logic reused by more than one dashboard (calendar, channel mapping, styling)
 └── docs/                      # conventions and onboarding
 ```
