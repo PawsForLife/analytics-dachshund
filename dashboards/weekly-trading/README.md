@@ -45,15 +45,22 @@ All weeks are 445 reporting weeks. The reporting week, its month and quarter, th
 
 Each dataset records when it was last updated, and the page shows a stale banner if a refresh has not landed.
 
-## Status of this folder
+## Contents of this folder
 
-This folder is being populated. It currently holds this description only. The following will be added as they are brought across from where they live today:
+| Path | What it holds |
+| --- | --- |
+| `sql/` | The query behind each of the 75 BigQuery-backed datasets, with an index by tab. See `sql/README.md` |
+| `src/` | `refresh_lib.py` (query wrapping, checksums and the publish gate) and `voc.py` (CX comment theme rebuild) |
+| `config/` | `voc_rubric.md`, the fixed rubric used to code survey comments |
+| `templates/` | The dashboard page: `index.html`, `app.js` and `explorer.js` |
+| `skill/pc-ops-topup/` | The Tuesday Operations top-up skill and its `scripts/ops.py` |
+| `docs/` | `runbook.md` (the Monday refresh procedure) and `scheduled-tasks.md` |
 
-- `sql/`: the queries behind each dataset
-- `src/`: build and refresh scripts, one module per tab
-- `templates/`: the page HTML, scripts and styling
-- `config/`: non-secret settings such as budget mappings and channel groupings
-- `skill/`: the Claude skill instructions that drive the weekly refresh and the Tuesday Operations top-up
+### Source of truth
+
+This folder is currently a versioned copy. The live dashboard still runs its queries and page from its own store, and the scheduled refresh reads the runbook and helper scripts from there too. Until the refresh is pointed at this repo, any change to a query, the page or a script must be made in both places.
+
+The other 10 datasets have no SQL: the four CX comment datasets are rebuilt from coded survey comments, and the six Operations datasets are read from the operations team's own dashboard.
 
 ## Ownership
 

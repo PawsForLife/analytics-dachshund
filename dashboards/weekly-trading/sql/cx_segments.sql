@@ -1,0 +1,9 @@
+-- Dataset: cx_segments
+-- Title: NPS by order type
+-- Tab: CX
+-- Connector: Google Cloud BigQuery  Tool: execute_sql_readonly
+-- Project: petcircle-data-ca
+-- Labels: null
+-- Description: NPS by order mode (Auto Delivery or transactional) and first or repeat order, on the order the survey was sent against. Reads customer__customer_review, product__customer_order, reference__calendar_4_4_5_week. Pet Circle only (store_id = 'pc-au').
+
+WITH wk AS (SELECT week_end_date AS we, DATE_SUB(week_end_date, INTERVAL 90 DAY) AS ws FROM `petcircle-warehouse-cloud.business_layer.reference__calendar_4_4_5_week` WHERE is_latest_merch_complete_week = TRUE), r AS (SELECT DATE_TRUNC(v.review_date, WEEK(MONDAY)) AS week_start, v.review_id, v.net_promoter_count AS np, v.review_count_promoter AS pr, v.review_count_neutral AS pa, v.review_count_detractor AS de, v.review_text, v.customer_review_order_mapping[SAFE_OFFSET(0)].order_id AS oid FROM `petcircle-warehouse-cloud.business_layer.customer__customer_review` v CROSS JOIN wk WHERE v.review_date BETWEEN wk.ws AND wk.we), s AS (SELECT r.np, IF(o.is_auto_delivery_order, 'Auto Delivery', 'Transactional') || IF(o.is_first_customer_order_complete, ' - first order', ' - repeat') AS segment FROM r JOIN (SELECT order_id, ANY_VALUE(is_auto_delivery_order) AS is_auto_delivery_order, ANY_VALUE(is_first_customer_order_complete) AS is_first_customer_order_complete FROM (SELECT * FROM `petcircle-warehouse-cloud.business_layer.product__customer_order` WHERE store_id = 'pc-au') GROUP BY order_id) o ON o.order_id = r.oid) SELECT segment, CASE segment WHEN 'Transactional - repeat' THEN 1 WHEN 'Auto Delivery - repeat' THEN 2 WHEN 'Transactional - first order' THEN 3 ELSE 4 END AS sort, COUNT(*) AS n, ROUND(SUM(np) / COUNT(*) * 100, 1) AS nps, COUNT(*) < 50 AS suppressed, CAST((SELECT we FROM wk) AS STRING) AS week_end FROM s GROUP BY segment ORDER BY sort
