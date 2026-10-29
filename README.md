@@ -51,3 +51,4 @@ Only `dashboards/` exists so far. `shared/` and `docs/` will be added when a sec
 - Work on a branch and raise a pull request into `main`. Changes to metric definitions deserve a second pair of eyes.
 - Use Australian English and Pet Circle's reporting conventions (445 calendar, Sydney time) in documentation and output.
 - State the 445 week and the comparison basis (last week, last year, budget) wherever a figure is shown.
+- Merging to `main` tags each changed dashboard automatically (`<dashboard>/<date>-<short commit>`, for example `weekly-trading/2026-11-03-d70b1e9`) using `.github/workflows/tag.yml`. A change under `shared/` tags every dashboard. A tag means the version was approved and merged, not that it is live.

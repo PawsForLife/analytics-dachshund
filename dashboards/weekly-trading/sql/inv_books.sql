@@ -4,7 +4,7 @@
 -- Connector: Google Cloud BigQuery  Tool: execute_sql_readonly
 -- Project: petcircle-data-ca
 -- Labels: null
--- Description: Per merchandise book: stock at cost and SLOB (active vs exit), stock vs last week and LY, OOS lost sales and its share of the book's sales vs last week and the prior 13 weeks, poor-fill and 90-day fill. Reads inventory__item_trading_report, inventory__inventory_holding_status__eod, inventory__customer_order__item_warehouse, inventory__inventory_requisition_order, reference__calendar_4_4_5_week.
+-- Description: Per merchandise book: stock at cost and SLOB (active vs exit), stock vs last week and LY, OOS lost sales (4-week average sales, Released for Sale and Introduction lines) and its share of the book's sales vs last week and the prior 13 weeks, poor-fill and 90-day fill. Reads inventory__item_trading_report, inventory__inventory_holding_status__eod, inventory__customer_order__item_warehouse, inventory__inventory_requisition_order, reference__calendar_4_4_5_week.
 
 WITH cw AS (
   SELECT week_end_date AS we FROM `petcircle-warehouse-cloud.business_layer.reference__calendar_4_4_5_week` WHERE is_latest_merch_complete_week = TRUE
@@ -50,7 +50,8 @@ WITH cw AS (
   FROM `petcircle-warehouse-cloud.business_layer.inventory__inventory_holding_status__eod`
   WHERE valid_for_date IN (SELECT d FROM wk) AND count_item_out_of_stock > 0
 ), sl AS (
-  SELECT wk.k, wk.d, c.item_code, c.warehouse_name, SUM(c.item_revenue) / 6 AS r6
+  SELECT wk.k, wk.d, c.item_code, c.warehouse_name, SUM(c.item_revenue) / 6 AS r6,
+    SUM(IF(c.calendar_date >= DATE_SUB(wk.d, INTERVAL 27 DAY), c.item_revenue, 0)) / 4 AS r4
   FROM `petcircle-warehouse-cloud.business_layer_aggregate.inventory__customer_order__item_warehouse` c
   JOIN wk ON c.calendar_date BETWEEN DATE_SUB(wk.d, INTERVAL 41 DAY) AND wk.d
   WHERE c.calendar_date BETWEEN (SELECT DATE_SUB(we, INTERVAL 132 DAY) FROM cw) AND (SELECT we FROM cw)
@@ -61,15 +62,19 @@ WITH cw AS (
   WHERE o.inventory_requisition_order_stage <> 'Open'
     AND o.inventory_requisition_expected_delivered_date BETWEEN (SELECT DATE_SUB(we, INTERVAL 89 DAY) FROM cw) AND (SELECT we FROM cw)
   GROUP BY 1, 2
+), lc AS (
+  SELECT item_code, warehouse_name, ANY_VALUE(ls) AS ls FROM itr GROUP BY 1, 2
 ), ol AS (
-  SELECT sl.k, COALESCE(b.book, 'Unmapped') AS book, sl.r6, oh.item_code IS NOT NULL AS is_oos,
+  SELECT sl.k, COALESCE(b.book, 'Unmapped') AS book, sl.r6, sl.r4, oh.item_code IS NOT NULL AS is_oos,
+    IFNULL(lc.ls IN ('Released for Sale', 'Introduction'), FALSE) AS in_scope,
     IFNULL(SAFE_DIVIDE(fl.rq, fl.oq) < 0.92, FALSE) AS poor_fill
   FROM sl
   LEFT JOIN oh USING (d, item_code, warehouse_name)
   LEFT JOIN bk b USING (item_code)
   LEFT JOIN fl USING (item_code, warehouse_name)
+  LEFT JOIN lc USING (item_code, warehouse_name)
 ), oa AS (
-  SELECT COALESCE(ol.book, 'Total') AS bkk, ol.k, SUM(IF(ol.is_oos, ol.r6, 0)) AS lost, SUM(IF(ol.is_oos AND ol.poor_fill, ol.r6, 0)) AS pf, SUM(ol.r6) AS sales
+  SELECT COALESCE(ol.book, 'Total') AS bkk, ol.k, SUM(IF(ol.is_oos AND ol.in_scope, ol.r4, 0)) AS lost, SUM(IF(ol.is_oos AND ol.in_scope AND ol.poor_fill, ol.r4, 0)) AS pf, SUM(ol.r6) AS sales
   FROM ol GROUP BY ROLLUP(ol.k, ol.book)
 ), op AS (
   SELECT bkk AS book,

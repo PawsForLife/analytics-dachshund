@@ -26,8 +26,10 @@ The ten datasets below have no SQL here. The four CX comment datasets are rebuil
 | --- | --- |
 | [`cx_contact_reasons`](cx_contact_reasons.sql) | Contacts by reason |
 | [`cx_contacts`](cx_contacts.sql) | Customer contacts |
+| [`cx_contacts_weekly`](cx_contacts_weekly.sql) | Weekly contacts trend |
 | [`cx_csat_channel`](cx_csat_channel.sql) | CSAT by channel |
 | [`cx_csat_handler`](cx_csat_handler.sql) | CSAT by handler |
+| [`cx_csat_handler_weekly`](cx_csat_handler_weekly.sql) | Weekly CSAT by handler |
 | [`cx_csat_weekly`](cx_csat_weekly.sql) | Weekly CSAT trend |
 | [`cx_nps`](cx_nps.sql) | NPS 13-week window |
 | [`cx_nps_weekly`](cx_nps_weekly.sql) | Weekly NPS |

@@ -29,7 +29,7 @@ The dashboard has ten tabs:
 
 ## Data
 
-The dashboard is built from 85 datasets, one or more per tab. Most are produced by SQL against the `business_layer` datasets in BigQuery and saved into the dashboard as files. The exceptions are:
+The dashboard is built from 87 datasets, one or more per tab. Most are produced by SQL against the `business_layer` datasets in BigQuery and saved into the dashboard as files. The exceptions are:
 
 - **Operations** (`ops_labour`, `ops_prod`, `ops_service`, `ops_amr`, `ops_difot`, `ops_meta`): read from the operations team's own weekly dashboard rather than queried from BigQuery. A banner shows when that dashboard is behind this one.
 - **CX comment themes** (`cx_themes`, `cx_clusters`, `cx_driver`, `cx_voc_codes`): new survey comments are coded against a fixed rubric each week and the rows recomputed from the coded-comment store. Comment text is not stored in the dashboard; responses carry a hashed id only.
@@ -49,7 +49,7 @@ Each dataset records when it was last updated, and the page shows a stale banner
 
 | Path | What it holds |
 | --- | --- |
-| `sql/` | The query behind each of the 75 BigQuery-backed datasets, with an index by tab. See `sql/README.md` |
+| `sql/` | The query behind each of the 77 BigQuery-backed datasets, with an index by tab. See `sql/README.md` |
 | `src/` | `refresh_lib.py` (query wrapping, checksums and the publish gate) and `voc.py` (CX comment theme rebuild) |
 | `config/` | `voc_rubric.md`, the fixed rubric used to code survey comments |
 | `templates/` | The dashboard page: `index.html`, `app.js` and `explorer.js` |

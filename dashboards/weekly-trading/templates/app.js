@@ -371,7 +371,7 @@
     h += sec('1', 'New customer shape');
     h += card('', 'The Marketing WBR comparison set. Both averages exclude this week. Acquisition spend, payback and performance CPA live in the Marketing Performance Tracker, outside the warehouse, so they show as awaiting that extract rather than estimated.', wbr('cust_wbr', W.filter((r) => r.block === 'new'), 'block,metric'));
     h += '<div class="grid wide" style="margin-top:var(--cds-gap-md)">' + card('New customers by acquisition channel', 'Acquisition channel is the channel of the session that placed the customer’s first order (Pet Circle website and app, first-touch of the converting visit). First orders with no tracked session, such as phone orders, show as Unattributed. Rows sum to the total.', tbl('new_by_channel', 'channel', [{ f: 'channel', h: 'Acquisition channel' }, { f: 'new_tw', h: 'New', v: (r) => num(r.new_tw) }, { f: 'pct_lw', h: 'vs LW', v: (r) => frac(r.pct_lw), c: (r) => cls(r.pct_lw) }, { f: 'pct_l13w', h: 'vs 12wk', v: (r) => frac(r.pct_l13w), c: (r) => cls(r.pct_l13w) }, { f: 'share', h: 'Share', v: (r) => pct(r.share) }, { f: 'share_pp_lw', h: 'Share vs LW', v: (r) => (r.channel === 'Total' ? '' : pp(r.share_pp_lw)), c: () => 'flat' }], rows('new_by_channel'), { rowCls: (r) => (r.channel === 'Total' ? 'tot' : '') }))
-      + card('New customers by category - reach of the first basket', 'A new customer counts in every group their first basket touched, so rows do not sum to the total: read as reach, not composition.', tbl('new_by_category', 'category', [{ f: 'category', h: 'Category group' }, { f: 'new_tw', h: 'New', v: (r) => num(r.new_tw) }, { f: 'pct_lw', h: 'vs LW', v: (r) => frac(r.pct_lw), c: (r) => cls(r.pct_lw) }, { f: 'pct_l13w', h: 'vs 12wk', v: (r) => frac(r.pct_l13w), c: (r) => cls(r.pct_l13w) }], rows('new_by_category'))) + '</div>';
+      + card('New customers by category - reach of the first basket', 'A new customer counts in every group their first basket touched, so rows do not sum to the total: read as reach, not composition.', tbl('new_by_category', 'category', [{ f: 'category', h: 'Category group' }, { f: 'new_tw', h: 'New', v: (r) => num(r.new_tw) }, { f: 'pct_lw', h: 'vs LW', v: (r) => frac(r.pct_lw), c: (r) => cls(r.pct_lw) }].concat(rows('new_by_category').some((r) => isN(r.pct_l4w)) ? [{ f: 'pct_l4w', h: 'vs 4wk avg', v: (r) => frac(r.pct_l4w) + '<span class="sm">avg ' + num(r.new_avg4, 0) + '</span>', c: (r) => cls(r.pct_l4w) }] : []).concat([{ f: 'pct_l13w', h: 'vs 12wk', v: (r) => frac(r.pct_l13w), c: (r) => cls(r.pct_l13w) }]), rows('new_by_category'))) + '</div>';
 
     // 2 health
     h += sec('2', 'Active base and customer health');
@@ -454,9 +454,9 @@
     const g = one('ad_groups');
     if (g) {
       const gv = (f, fmt) => V('ad_groups', f, null, fmt(g[f]));
-      h += '<div class="grid tiles">' + tile('Gross inflows', gv('inflows', num), 'activations and reactivations') + tile('Gross outflows', gv('outflows', num), 'cancellations and pauses') + tile('Net movement', '<span class="' + cls(g.net_change) + '">' + gv('net_change', snum) + '</span>', 'change in active groups') + tile('Churn on the base', gv('churn_on_base', (v) => pct(v, 2)), 'full cancellations over the opening base') + '</div>';
+      h += '<div class="grid tiles">' + tile('Gross inflows', gv('inflows', num), 'activations and reactivations') + tile('Gross outflows', gv('outflows', num), 'active groups cancelled, paused or moved out of Active') + tile('Net movement', '<span class="' + cls(g.net_change) + '">' + gv('net_change', snum) + '</span>', 'change in active groups') + tile('Churn on the base', gv('churn_on_base', (v) => pct(v, 2)), 'active groups cancelled over the opening base') + '</div>';
       const line = (lab, f, fmt, basis, c = '') => '<tr' + (c ? ' class="' + c + '"' : '') + '><td>' + lab + '</td><td>' + gv(f, fmt) + '</td><td class="flat" style="text-align:left">' + basis + '</td></tr>';
-      h += card('', 'Inflows are activations and reactivations; outflows are cancellations and pauses. Unreconciled is the gap between counted flows and the actual change in active groups - the daily counters and the point-in-time state are different measures, so the residual is shown rather than absorbed. Skips and reschedules do not change the active state and are excluded.', '<div class="tw"><table class="t"><thead><tr><th>Movement</th><th>Groups</th><th style="text-align:left">Basis</th></tr></thead><tbody>' + line('Active AD groups, prior Sunday', 'opening', num, 'opening base') + line('New subscriptions activated', 'activated', num, 'in: groups activated in the week') + line('Reactivations', 'reactivated', num, 'in: paused or cancelled groups resumed') + line('Cancellations', 'cancelled', num, 'out: groups whose whole state flips to Cancelled') + line('Pauses', 'paused', num, 'out: groups paused in the week') + line('Net movement on counted flows', 'net_counted', snum, 'inflows less outflows') + line('Unreconciled', 'unreconciled', snum, 'gap to the actual change in the base') + line('Active AD groups, this Sunday', 'closing', num, 'closing base', 'tot') + '</tbody></table></div>', ' style="margin-top:var(--cds-gap-md)"');
+      h += card('', 'Inflows are groups entering Active (new activations and reactivations); outflows are groups leaving Active (cancelled, paused, or moved to another state such as Placeholder). Each move is counted once, on the day it happens, so opening + inflows - outflows = closing exactly. A paused group that is later cancelled had already left the active base when it paused, so it is shown below the table as a memo and not counted again. Skips and reschedules do not change the active state and are excluded.', '<div class="tw"><table class="t"><thead><tr><th>Movement</th><th>Groups</th><th style="text-align:left">Basis</th></tr></thead><tbody>' + line('Active AD groups, prior Sunday', 'opening', num, 'opening base') + line('New subscriptions activated', 'activated', num, 'in: groups activated in the week') + line('Reactivations', 'reactivated', num, 'in: paused or cancelled groups resumed') + line('Cancellations', 'cancelled', num, 'out: active groups cancelled') + line('Pauses', 'paused', num, 'out: active groups paused') + (isN(g.other_exits) ? line('Other exits', 'other_exits', num, 'out: active groups moved to another state, such as Placeholder') : '') + line('Net movement on counted flows', 'net_counted', snum, 'inflows less outflows') + (isN(g.unreconciled) && +g.unreconciled !== 0 ? line('Unreconciled', 'unreconciled', snum, 'check failed: counted flows do not tie to the change in the base', 'neg') : '') + line('Active AD groups, this Sunday', 'closing', num, 'closing base', 'tot') + '</tbody></table></div>' + (isN(g.paused_then_cancelled) ? '<p class="note">Memo: ' + gv('paused_then_cancelled', num) + ' already-paused groups were cancelled in the week. They left the active base when they paused, so they are not in the outflows above.</p>' : ''), ' style="margin-top:var(--cds-gap-md)"');
     } else h += state('ad_groups');
 
     // funnel and cohorts
@@ -573,7 +573,7 @@
 
     const ibR = IB.filter((r) => r.book !== 'Unmapped' || r.stock_at_cost > 250000);
     h += sec('1', 'Out-of-stock lost sales and cause');
-    h += card('', 'Lost = the 6-week average weekly sales of item and warehouse lines flagged out of stock on the latest Sunday - a revenue basis, about 1% of sales. Poor-fill = the share of that on lines where 90-day supplier fill is below 92% (orderable but under-delivered); the rest is an ordering gap or demand.', tbl('inv_books', 'book', [{ f: 'book', h: 'Book' }, { f: 'oos_lost_wk', h: 'Lost / wk', v: (r) => money(r.oos_lost_wk) }, { f: 'oos_rev_pct', h: 'OOS % of sales', v: (r) => pf(r.oos_rev_pct, 2), c: (r) => (r.oos_rev_pct >= 0.05 ? 'neg' : '') }, { f: 'oos_rev_pct_wow_pp', h: 'WoW', v: (r) => pp(r.oos_rev_pct_wow_pp, 2), c: (r) => cls(r.oos_rev_pct_wow_pp, false) }, { f: 'oos_rev_pct_l13w', h: '13wk avg', v: (r) => pf(r.oos_rev_pct_l13w, 2) }, { f: 'poor_fill_lost', h: 'Poor-fill $', v: (r) => money(r.poor_fill_lost) }, { f: 'poor_fill_pct', h: 'Poor-fill %', v: (r) => pf(r.poor_fill_pct), c: (r) => (r.poor_fill_pct >= 0.4 ? 'neg' : '') }, { f: 'fill_90d', h: 'Fill 90d', v: (r) => pf(r.fill_90d) }], ibR, { rowCls: (r) => (r.book === 'Total' ? 'tot' : '') }));
+    h += card('', 'Lost = the 4-week average weekly sales of Released for Sale and Introduction item and warehouse lines flagged out of stock on the latest Sunday - a revenue basis, about 1% of sales (OOS % is lost sales over 6-week average weekly sales). Poor-fill = the share of that on lines where 90-day supplier fill is below 92% (orderable but under-delivered); the rest is an ordering gap or demand.', tbl('inv_books', 'book', [{ f: 'book', h: 'Book' }, { f: 'oos_lost_wk', h: 'Lost / wk', v: (r) => money(r.oos_lost_wk) }, { f: 'oos_rev_pct', h: 'OOS % of sales', v: (r) => pf(r.oos_rev_pct, 2), c: (r) => (r.oos_rev_pct >= 0.05 ? 'neg' : '') }, { f: 'oos_rev_pct_wow_pp', h: 'WoW', v: (r) => pp(r.oos_rev_pct_wow_pp, 2), c: (r) => cls(r.oos_rev_pct_wow_pp, false) }, { f: 'oos_rev_pct_l13w', h: '13wk avg', v: (r) => pf(r.oos_rev_pct_l13w, 2) }, { f: 'poor_fill_lost', h: 'Poor-fill $', v: (r) => money(r.poor_fill_lost) }, { f: 'poor_fill_pct', h: 'Poor-fill %', v: (r) => pf(r.poor_fill_pct), c: (r) => (r.poor_fill_pct >= 0.4 ? 'neg' : '') }, { f: 'fill_90d', h: 'Fill 90d', v: (r) => pf(r.fill_90d) }], ibR, { rowCls: (r) => (r.book === 'Total' ? 'tot' : '') }));
 
     h += sec('2', 'Availability by warehouse');
     if (ok('inv_oos_wh')) {
@@ -887,9 +887,32 @@
   }
 
   // ================= CX =================
+  dash.calc('cx_contacts_worm', {
+    inputs: ['cx_contacts_weekly', 'cx_contacts'],
+    title: 'Contacts 13-week trend',
+    description: 'Weekly contacts, contact rate per 1,000 closed orders and Luna share for the last 13 weeks, with the latest week taken from the headline tiles so each worm ends on its tile figure.',
+    fn: (cx_contacts_weekly, cx_contacts) => {
+      const k = cx_contacts[0] || {};
+      return cx_contacts_weekly.map((r) => (r.week_end === k.week_end
+        ? { week_end: r.week_end, contacts: +k.contacts_tw, per_1k_orders: +k.per_1k_orders_tw, ai_engaged_pct: +k.ai_engaged_pct }
+        : { week_end: r.week_end, contacts: +r.contacts, per_1k_orders: +r.per_1k_orders, ai_engaged_pct: +r.ai_engaged_pct }))
+        .sort((a, b) => (a.week_end < b.week_end ? -1 : 1));
+    },
+  });
+  dash.calc('cx_csat_worm', {
+    inputs: ['cx_csat_handler_weekly', 'cx_csat_handler'],
+    title: 'CSAT 13-week trend by handler',
+    description: 'Weekly CSAT and ratings for each handler over the last 13 weeks, with the latest week and the 13-week level taken from the CSAT tiles so each worm agrees with its tile.',
+    fn: (cx_csat_handler_weekly, cx_csat_handler) => cx_csat_handler_weekly.map((r) => {
+      const t = cx_csat_handler.find((h) => h.handler === r.handler) || {};
+      const latest = r.week_end === t.week_end;
+      return { week_end: r.week_end, handler: r.handler, ratings: latest ? +t.ratings_tw : +r.ratings, csat_pct: latest ? (t.ratings_tw ? +t.csat_pct_tw : null) : +r.csat_pct, csat_pct_13w: +t.csat_pct_13w };
+    }).sort((a, b) => (a.handler === b.handler ? (a.week_end < b.week_end ? -1 : 1) : (a.handler < b.handler ? -1 : 1))),
+  });
   function rCX() {
     const t = T.cx;
     let h = ptitle(t);
+    h += '<div class="decision"><b>Provisional figures:</b> the CX numbers on this tab are provisional. They are built from the Gladly data held in the warehouse, so they will differ from CX numbers extracted directly from Gladly. Functionality to reduce the gap is being built.</div>';
     const need = ['cx_nps', 'cx_nps_weekly'];
     if (!ready(need)) return h + state(need);
     const n = one('cx_nps'), nv = (f, fmt) => V('cx_nps', f, null, fmt(n[f]));
@@ -939,10 +962,10 @@
     if (ready(['cx_contacts', 'cx_contact_reasons'])) {
       const k = one('cx_contacts'), kv = (f, fmt) => V('cx_contacts', f, null, fmt(k[f]));
       const CR = rows('cx_contact_reasons');
-      h += '<div class="grid tiles">' + tile('Contacts this week', kv('contacts_tw', (v) => num(v, 0)), 'valid inbound contacts; last week ' + kv('contacts_lw', (v) => num(v, 0)), pill('vs 12wk', kv('contacts_vs_avg12_pct', frac), cls(k.contacts_vs_avg12_pct, false))) +
-        tile('Contact rate per 1,000 closed orders', kv('per_1k_orders_tw', (v) => num(v, 1)), 'on ' + kv('orders_tw', (v) => num(v, 0)) + ' closed orders; 12-week rate ' + kv('per_1k_orders_avg12', (v) => num(v, 1)), pill('vs 12wk', kv('d_per_1k_vs_avg12', (v) => snum(v, 1)), cls(k.d_per_1k_vs_avg12, false))) +
-        tile('With a contact reason', kv('with_reason_pct', (v) => pct(v, 1)), 'of ' + kv('conversations_tw', (v) => num(v, 0)) + ' conversations carry at least one reason tag') +
-        tile('Engaged by Luna', kv('ai_engaged_pct', (v) => pct(v, 1)), 'of conversations the Gladly AI assistant took part in') + '</div>';
+      const worm = (html, f) => html.replace(/<\/div>$/, '<div class="spark" data-cxspark="' + f + '" data-source="cx_contacts_worm"></div></div>');
+      h += '<div class="grid tiles">' + worm(tile('Contacts this week', kv('contacts_tw', (v) => num(v, 0)), 'valid inbound contacts; last week ' + kv('contacts_lw', (v) => num(v, 0)), pill('vs 12wk', kv('contacts_vs_avg12_pct', frac), cls(k.contacts_vs_avg12_pct, false))), 'contacts') +
+        worm(tile('Contact rate per 1,000 closed orders', kv('per_1k_orders_tw', (v) => num(v, 1)), 'on ' + kv('orders_tw', (v) => num(v, 0)) + ' closed orders; 12-week rate ' + kv('per_1k_orders_avg12', (v) => num(v, 1)), pill('vs 12wk', kv('d_per_1k_vs_avg12', (v) => snum(v, 1)), cls(k.d_per_1k_vs_avg12, false))), 'per_1k_orders') +
+        worm(tile('Engaged by Luna', kv('ai_engaged_pct', (v) => pct(v, 1)), 'of conversations the Gladly AI assistant took part in'), 'ai_engaged_pct') + '</div>';
       const mv = CR.filter((r) => isN(r.d_avg12)).slice().sort((a, b) => b.d_avg12 - a.d_avg12);
       const up = mv.filter((r) => r.d_avg12 > 0).slice(0, 3), dn = mv.filter((r) => r.d_avg12 < 0).reverse().slice(0, 3);
       const mvTxt = (r) => V('cx_contact_reasons', 'reason', { reason: r.reason }, esc(r.reason)) + ' ' + V('cx_contact_reasons', 'd_avg12', { reason: r.reason }, snum(r.d_avg12, 0)) + ' (' + V('cx_contact_reasons', 'pct_vs_avg12', { reason: r.reason }, frac(r.pct_vs_avg12, 0)) + ')';
@@ -955,7 +978,7 @@
         { f: 'avg12', h: '12-wk avg', v: (r) => num(r.avg12, 0) },
         { f: 'pct_vs_avg12', h: 'Vs 12-wk avg', v: (r) => frac(r.pct_vs_avg12, 0) + '<span class="sm">' + snum(r.d_avg12, 0) + '</span>', c: (r) => cls(r.pct_vs_avg12, false) },
         { f: 'per_1k_orders_tw', h: 'Per 1k closed orders', v: (r) => num(r.per_1k_orders_tw, 1) }], CR.slice().sort((a, b) => b.tw - a.tw)) +
-        '<p class="note">Contacts and the contact rate are the governed Contact Rate measures: inbound Gladly contacts started in the week, less those abandoned within 10 seconds, per 1,000 customer orders closed. They count customer demand, including contacts Luna handles, so they differ from Looker\'s contacts fulfilled (those an agent responded to). The reason table counts conversations - one conversation can hold several contacts. Reasons come from the topics agents tag, rolled up to these reasons by a fixed mapping that leaves out process tags (survey suppression, data collection, escalation routing, spam, social and WOW moments); a conversation with several topics counts once under each of its reasons, so the reasons add to more than the total. More is shown in red because contacts are a cost and usually a symptom. Returns tagging changed in early August (one return topic retired), so its 12-week average still carries the old tagging and overstates the drop.</p>');
+        '<p class="note">Worms = the last 13 weeks of each tile on its own scale, with the 13-week average dashed; hover for the weekly figure. Contacts and the contact rate are the governed Contact Rate measures: inbound Gladly contacts started in the week, less those abandoned within 10 seconds, per 1,000 customer orders closed. They count customer demand, including contacts Luna handles, so they differ from Looker\'s contacts fulfilled (those an agent responded to). The reason table counts conversations - one conversation can hold several contacts. Reasons come from the topics agents tag, rolled up to these reasons by a fixed mapping that leaves out process tags (survey suppression, data collection, escalation routing, spam, social and WOW moments); a conversation with several topics counts once under each of its reasons, so the reasons add to more than the total. More is shown in red because contacts are a cost and usually a symptom. Returns tagging changed in early August (one return topic retired), so its 12-week average still carries the old tagging and overstates the drop.</p>');
     } else h += state(['cx_contacts', 'cx_contact_reasons']);
 
     h += sec('4', 'CSAT by channel, and Luna versus a person');
@@ -968,7 +991,9 @@
       const csatTxt = (r, f, nf) => (r[nf] ? pct(r[f], 1) : NA);
       if (lo && wp) h += '<p class="lede">Luna handled ' + hv(lo, 'conv_share_tw', (v) => pct(v, 1)) + ' of conversations end to end this week (' + hv(lo, 'conv_share_13w', (v) => pct(v, 1)) + ' across the 13 weeks). Where Luna resolved alone, ' + hv(lo, 'csat_pct_13w', (v) => pct(v, 1)) + ' of customers rated it 4 or 5, against ' + V('cx_csat_channel', 'csat_pct_13w', { channel: 'All channels', handler_group: 'With a person' }, pct(wp.csat_pct_13w, 1)) + ' when a person handled the conversation, with or without Luna first.</p>';
       const htile = (r, label, foot) => tile(label, hv(r, 'csat_pct_13w', (v) => (r.ratings_13w ? pct(v, 1) : NA)), hv(r, 'ratings_13w', (v) => num(v, 0)) + ' ratings over 13 weeks (' + hv(r, 'response_rate_13w', (v) => pct(v, 1)) + ' response); ' + hv(r, 'conv_share_13w', (v) => pct(v, 1)) + ' of conversations' + (foot || ''), r.ratings_tw && !r.suppressed_tw ? pill('this week', hv(r, 'csat_pct_tw', (v) => pct(v, 1)), 'flat') : '');
-      h += '<div class="grid tiles">' + (lo ? htile(lo, 'Luna only · CSAT') : '') + (lp ? htile(lp, 'Luna then a person · CSAT') : '') + (po ? htile(po, 'Person only · CSAT', '; mostly phone, since email is rarely surveyed') : '') + (al ? tile('All conversations · CSAT', hv(al, 'csat_pct_13w', (v) => pct(v, 1)), hv(al, 'ratings_13w', (v) => num(v, 0)) + ' ratings over 13 weeks (' + hv(al, 'response_rate_13w', (v) => pct(v, 1)) + ' response)', al.ratings_tw && !al.suppressed_tw ? pill('this week', hv(al, 'csat_pct_tw', (v) => pct(v, 1)), 'flat') : '') : '') + '</div>';
+      const cworm = (html, g) => html.replace(/<\/div>$/, '<div class="spark" data-csatspark="' + esc(g) + '" data-source="cx_csat_worm"></div></div>');
+      h += '<div class="grid tiles">' + (lo ? cworm(htile(lo, 'Luna only · CSAT'), 'Luna only') : '') + (lp ? cworm(htile(lp, 'Luna then a person · CSAT'), 'Luna then a person') : '') + (po ? cworm(htile(po, 'Person only · CSAT', '; mostly phone, since email is rarely surveyed'), 'Person only') : '') + (al ? cworm(tile('All conversations · CSAT', hv(al, 'csat_pct_13w', (v) => pct(v, 1)), hv(al, 'ratings_13w', (v) => num(v, 0)) + ' ratings over 13 weeks (' + hv(al, 'response_rate_13w', (v) => pct(v, 1)) + ' response)', al.ratings_tw && !al.suppressed_tw ? pill('this week', hv(al, 'csat_pct_tw', (v) => pct(v, 1)), 'flat') : ''), 'All') : '') + '</div>';
+      h += '<p class="note">Worms = weekly CSAT for the last 13 weeks, with the 13-week CSAT on the tile dashed. Hover for the weekly figure and rating count; weeks with fewer than 30 ratings are marked indicative there. The latest week is still collecting ratings.</p>';
       const chans = [...new Set(CH.map((r) => r.channel))].filter((c) => CH.some((r) => r.channel === c && r.ratings_13w > 0));
       const cell = (c, g) => { const r = cr(c, g); if (!r || !r.ratings_13w) return '<td class="flat">no ratings</td>'; const w = { channel: c, handler_group: g }; return '<td>' + (r.suppressed_13w ? '<span class="flat">' + V('cx_csat_channel', 'csat_pct_13w', w, pct(r.csat_pct_13w, 0)) + '</span>' : V('cx_csat_channel', 'csat_pct_13w', w, pct(r.csat_pct_13w, 1))) + '<span class="sm">' + V('cx_csat_channel', 'ratings_13w', w, num(r.ratings_13w, 0)) + (r.ratings_13w === 1 ? ' rating' : ' ratings') + (r.suppressed_13w ? ', too few to read' : '') + '</span></td>'; };
       let t = '<div class="tw" data-source="cx_csat_channel"><table class="t"><thead><tr><th>Channel</th><th>Luna only</th><th>With a person</th><th>All rated</th><th>Conversations</th></tr></thead><tbody>';
@@ -1120,6 +1145,37 @@
     const tp = tipFor(el), unit = { product_margin_pct: 'pct', units_per_order: 'n2', orders: 'n' }[f] || '$';
     svg.append('rect').attr('width', W).attr('height', H).attr('fill', 'transparent').on('mousemove', (ev) => { const [mx] = d3.pointer(ev); const i = Math.max(0, Math.min(R.length - 1, Math.round(x.invert(mx)))); dot.style('display', null).attr('cx', x(i)).attr('cy', y(vals[i])); tp.innerHTML = '<span class="k">' + esc(R[i].wk_label) + ' · w/e ' + dateLabel(R[i].week_end) + '</span><br>' + (unit === 'pct' ? pct(vals[i]) : unit === 'n2' ? num(vals[i], 2) : unit === 'n' ? num(vals[i]) : money(vals[i])); place(el, tp, x(i), y(vals[i])); }).on('mouseleave', () => { dot.style('display', 'none'); tp.style.display = 'none'; });
   }
+  function cxSpark(el) {
+    const f = el.dataset.cxspark; const W0 = D('cx_contacts_worm');
+    el.querySelectorAll('svg').forEach((s) => s.remove());
+    const R = W0.status === 'ok' ? (W0.data || []).filter((r) => isN(r[f])) : [];
+    if (R.length < 2 || !el.clientWidth) return;
+    const W = el.clientWidth, H = 38, vals = R.map((r) => +r[f]);
+    const x = d3.scaleLinear([0, R.length - 1], [3, W - 3]), y = d3.scaleLinear(d3.extent(vals), [H - 4, 4]);
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', '0 0 ' + W + ' ' + H);
+    const mean = d3.mean(vals);
+    svg.append('line').attr('x1', 0).attr('x2', W).attr('y1', y(mean)).attr('y2', y(mean)).attr('stroke', 'var(--cds-chart-reference)').attr('stroke-dasharray', '3 3');
+    svg.append('path').attr('d', d3.line((d, i) => x(i), (d) => y(d))(vals)).attr('fill', 'none').attr('stroke', PCC[0]).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round');
+    svg.append('circle').attr('cx', x(R.length - 1)).attr('cy', y(vals[vals.length - 1])).attr('r', 3).attr('fill', PCC[0]);
+    const dot = svg.append('circle').attr('r', 3.5).attr('fill', PCC[0]).attr('stroke', 'var(--color-panel)').attr('stroke-width', 2).style('display', 'none');
+    const tp = tipFor(el), fmt = { contacts: (v) => num(v, 0) + ' contacts', per_1k_orders: (v) => num(v, 1) + ' per 1,000 orders', ai_engaged_pct: (v) => pct(v, 1) + ' engaged by Luna' }[f] || ((v) => num(v, 1));
+    svg.append('rect').attr('width', W).attr('height', H).attr('fill', 'transparent').on('mousemove', (ev) => { const [mx] = d3.pointer(ev); const i = Math.max(0, Math.min(R.length - 1, Math.round(x.invert(mx)))); dot.style('display', null).attr('cx', x(i)).attr('cy', y(vals[i])); tp.innerHTML = '<span class="k">w/e ' + dateLabel(R[i].week_end) + '</span><br>' + fmt(vals[i]); place(el, tp, x(i), y(vals[i])); }).on('mouseleave', () => { dot.style('display', 'none'); tp.style.display = 'none'; });
+  }
+  function csatSpark(el) {
+    const g = el.dataset.csatspark; const W0 = D('cx_csat_worm');
+    el.querySelectorAll('svg').forEach((s) => s.remove());
+    const R = W0.status === 'ok' ? (W0.data || []).filter((r) => r.handler === g && isN(r.csat_pct)) : [];
+    if (R.length < 2 || !el.clientWidth) return;
+    const W = el.clientWidth, H = 38, vals = R.map((r) => +r.csat_pct), ref = R[0].csat_pct_13w;
+    const x = d3.scaleLinear([0, R.length - 1], [4, W - 4]), y = d3.scaleLinear(d3.extent([...vals, ...(isN(ref) ? [+ref] : [])]), [H - 4, 4]);
+    const svg = d3.select(el).append('svg').attr('width', '100%').attr('height', H).attr('viewBox', '0 0 ' + W + ' ' + H);
+    if (isN(ref)) svg.append('line').attr('x1', 0).attr('x2', W).attr('y1', y(+ref)).attr('y2', y(+ref)).attr('stroke', 'var(--cds-chart-reference)').attr('stroke-dasharray', '3 3');
+    svg.append('path').attr('d', d3.line((d, i) => x(i), (d) => y(d))(vals)).attr('fill', 'none').attr('stroke', PCC[0]).attr('stroke-width', 2).attr('stroke-linecap', 'round').attr('stroke-linejoin', 'round');
+    svg.append('circle').attr('cx', x(R.length - 1)).attr('cy', y(vals[vals.length - 1])).attr('r', 3).attr('fill', PCC[0]);
+    const dot = svg.append('circle').attr('r', 3.5).attr('fill', PCC[0]).attr('stroke', 'var(--color-panel)').attr('stroke-width', 2).style('display', 'none');
+    const tp = tipFor(el);
+    svg.append('rect').attr('width', W).attr('height', H).attr('fill', 'transparent').on('mousemove', (ev) => { const [mx] = d3.pointer(ev); const i = Math.max(0, Math.min(R.length - 1, Math.round(x.invert(mx)))); dot.style('display', null).attr('cx', x(i)).attr('cy', y(vals[i])); tp.innerHTML = '<span class="k">w/e ' + dateLabel(R[i].week_end) + '</span><br>CSAT ' + pct(vals[i], 1) + ' on ' + num(R[i].ratings, 0) + (+R[i].ratings === 1 ? ' rating' : ' ratings') + (+R[i].ratings < 30 ? ' (indicative)' : ''); place(el, tp, x(i), y(vals[i])); }).on('mouseleave', () => { dot.style('display', 'none'); tp.style.display = 'none'; });
+  }
   function fyChart(el) {
     el.querySelectorAll('svg').forEach((s) => s.remove());
     const R = rows('fy_weeks').sort((a, b) => a.wk - b.wk);
@@ -1180,6 +1236,8 @@
     const p = document.getElementById(current); if (!p || p.hidden) return;
     p.querySelectorAll('[data-spark]').forEach(spark);
     p.querySelectorAll('[data-prspark]').forEach(prSpark);
+    p.querySelectorAll('[data-cxspark]').forEach(cxSpark);
+    p.querySelectorAll('[data-csatspark]').forEach(csatSpark);
     const c = (id, f) => { const el = p.querySelector('#' + id); if (el) f(el); };
     c('ch-fyweeks', fyChart); c('ch-mfweekly', mfChart); c('ch-prindex', prChart); c('ch-cxweekly', cxChart); c('ch-a92', a92Chart); c('ch-cohort', cohortChart);
     if (current === 'commercial' && window.pcExplorer) window.pcExplorer.mount(p);

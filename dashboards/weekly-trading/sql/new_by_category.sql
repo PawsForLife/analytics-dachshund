@@ -4,7 +4,7 @@
 -- Connector: Google Cloud BigQuery  Tool: execute_sql_readonly
 -- Project: petcircle-data-ca
 -- Labels: null
--- Description: Reach of new customers' first baskets across the six core category groups, counting a customer in every group their first basket touched, with change vs last week and the 12-week average. Reads product__customer_order, customer__customer_order_basket, reference__calendar_4_4_5_week. Pet Circle only (store_id = 'pc-au').
+-- Description: Reach of new customers' first baskets across the six core category groups, counting a customer in every group their first basket touched, with change vs last week, the 4-week average and the 12-week average. Reads product__customer_order, customer__customer_order_basket, reference__calendar_4_4_5_week. Pet Circle only (store_id = 'pc-au').
 
 WITH cal AS (
   SELECT week_end_date AS we FROM `petcircle-warehouse-cloud.business_layer.reference__calendar_4_4_5_week` WHERE is_latest_merch_complete_week
@@ -45,5 +45,7 @@ g AS (
 SELECT FORMAT_DATE('%Y-%m-%d', (SELECT we FROM cal)) AS week_end, category, sort,
   SUM(IF(k = 0, n, 0)) AS new_tw,
   ROUND(SAFE_DIVIDE(SUM(IF(k = 0, n, 0)), SUM(IF(k = 1, n, 0))) - 1, 4) AS pct_lw,
+  ROUND(AVG(IF(k BETWEEN 1 AND 4, n, NULL)), 1) AS new_avg4,
+  ROUND(SAFE_DIVIDE(SUM(IF(k = 0, n, 0)), AVG(IF(k BETWEEN 1 AND 4, n, NULL))) - 1, 4) AS pct_l4w,
   ROUND(SAFE_DIVIDE(SUM(IF(k = 0, n, 0)), AVG(IF(k BETWEEN 1 AND 12, n, NULL))) - 1, 4) AS pct_l13w
 FROM g GROUP BY category, sort ORDER BY sort
