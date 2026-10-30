@@ -9,3 +9,6 @@ __pycache__/
 
 # Files saved here by Claude sessions
 Claude outputs/
+
+# Release archives used when promoting a dashboard
+.promote-*.tgz
