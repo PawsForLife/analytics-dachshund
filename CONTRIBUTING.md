@@ -17,9 +17,9 @@ The full process, including rollback and the release checklist, is in the Conflu
 
    | Type | Use for | Example |
    | --- | --- | --- |
-   | `feature/` | New tabs, metrics, dashboards or tooling | `feature/price-tab-competitor-view-da-431` |
-   | `fix/` | Corrections to queries, definitions or the page | `fix/inventory-slob-definition-da-438` |
-   | `docs/` | Documentation only | `docs/weekly-trading-runbook-da-440` |
+   | `feat/` | New tabs, metrics, dashboards or tooling | `feat/price-tab-competitor-view-da-222` |
+   | `fix/` | Corrections to queries, definitions or the page | `fix/inventory-slob-definition-da-111` |
+   | `docs/` | Documentation only | `docs/weekly-trading-runbook-da-333` |
 
 3. Keep a branch to one change, scoped to one dashboard where possible. A change under `shared/` affects every dashboard, so keep it separate from dashboard-specific work.
 4. Keep branches short-lived. Rebase or merge `main` into your branch before asking for review.
@@ -29,7 +29,7 @@ The full process, including rollback and the release checklist, is in the Conflu
 
 A branch holds code, but you need a dashboard to see the result.
 
-- Make a private dev copy of the production dashboard with the `scripts/dev-copy` tool (ask Claude to "make a dev copy of the Weekly Trading Dashboard for branch `<branch>`").
+- Make a private dev copy of the production dashboard with the `scripts/dev-copy` tool (ask Claude to "make a dev copy of the `<dashboard name>` for branch `<branch>`").
 - Develop and test in the dev copy, then save the real change to your branch. The dev copy is only a preview.
 - Do not share the dev copy as if it were the real dashboard, and do not point any scheduled task at it.
 - Delete the dev copy once the branch is merged.
@@ -58,13 +58,13 @@ Open a pull request into `main` when the change is ready. The description must c
 
 Merging approves a change but does not publish it. On merge, `.github/workflows/tag.yml` tags each changed dashboard automatically (`<dashboard>/<date>-<short commit>`). Nobody tags by hand.
 
-The dashboard owner then promotes the tagged release to the live dashboard using the `scripts/promote` tool, then verifies the result and deletes the dev copy. Promotion is a separate, deliberate step and is not run during the Monday refresh or Tuesday Operations top-up windows.
+The dashboard owner then promotes the tagged release to the live dashboard using the `scripts/promote` tool, then verifies the result and deletes the dev copy. Promotion is a separate, deliberate step and is not run during a refresh window.
 
 ## Who can edit the live dashboard
 
-Edit access to a production dashboard is limited to the dashboard owner and named backups, listed in that dashboard's `README.md` and `docs/runbook.md`. For Weekly Trading, the owner is Will Kent and the backups are Anand Ganeshan and Anthony Squadrito.
+Edit access to a production dashboard is limited to the dashboard owner and members of the Analytics team. 
 
-If you are not listed, you can still contribute: develop on a branch, open a pull request, and ask the owner to promote the merged release. If you spot a problem on a live dashboard, raise it with the owner rather than fixing it live. A live-only edit is blocked by the promote tool and must be copied into the repo before the next release.
+If a user is not listed, they can contribute: develop on a branch, open a pull request, and ask the owner to promote the merged release. If a problem is noticed on a live dashboard, raise it with the owner rather than fixing it live. A live-only edit is blocked by the promote tool and must be copied into the repo before the next release.
 
 ## Adding a dashboard
 
