@@ -130,6 +130,22 @@ def gate(d):
     if os.path.exists(os.path.join(d, 'mf_device.json')):
         dv = sum(r['sessions'] for r in L('mf_device')); hs = L('mf_headline')[0]['sessions']
         if abs(dv - hs) > 0.001 * hs: probs.append(f'device sessions {dv} do not reconcile to the funnel headline {hs}')
+    if os.path.exists(os.path.join(d, 'ops_labour.json')):
+        lab = [r for r in L('ops_labour') if r['is_latest']]
+        nat = [r for r in lab if r['fc'] == 'ALL']; sites = [r for r in lab if r['fc'] != 'ALL']
+        if len(nat) != 1 or len(sites) != 4: probs.append(f'ops_labour needs one National and four site rows for the latest week, found {len(nat)} and {len(sites)}')
+        else:
+            n = nat[0]
+            for f, tol in (('cost', 1), ('orders', 1), ('hrs', 1), ('cost_tgt', 1)):
+                if abs((n[f] or 0) - sum((r[f] or 0) for r in sites)) > tol: probs.append(f'ops_labour National {f} {n[f]} != sum of sites {round(sum((r[f] or 0) for r in sites), 2)}')
+            for r in lab:
+                if abs(r['cost'] - r['own_cost'] - r['con_cost']) > 0.05: probs.append(f'ops_labour {r["fc"]} cost does not equal own plus contractor')
+                if not r['orders'] or not r['hrs'] or r['cost_tgt'] is None or r['cpo_tgt'] is None: probs.append(f'ops_labour {r["fc"]} has no orders, hours or budget')
+                fn = sum(r[k] for k in ('in_cost', 'out_cost', 'dock_cost', 'wknd_cost', 'supp_cost'))
+                gap = r['cost'] - fn  # only Tarneit (and so National) carries a standing adjustment that sits outside the function split
+                if abs(gap - (1919.38 if r['fc'] in ('MEL', 'ALL') else 0)) > 1: probs.append(f'ops_labour {r["fc"]} functions add to {round(fn, 2)}, total {r["cost"]}')
+            if not 3 < n['cpo'] < 12: probs.append(f'ops_labour National cost per order {n["cpo"]} out of range')
+            if abs(n['orders'] - orders) > 0.10 * orders: probs.append(f'ops_labour closed orders {n["orders"]} are more than 10% away from the scorecard created orders {orders}')
     print('\n'.join(probs) if probs else f'GATE OK {cal["fy_wk"]} w/e {we}')
     sys.exit(1 if probs else 0)
 if __name__ == '__main__':

@@ -6,7 +6,7 @@ One file per dataset, taken from the query each dataset runs against BigQuery. E
 
 Run queries as stored. They anchor themselves to the latest complete 445 week, so no parameters are needed. `_voc_text.sql.txt` is the query that reads survey comment text for the CX coding step; its output is customer personal data and must never be stored or shared (see `docs/runbook.md`).
 
-The ten datasets below have no SQL here. The four CX comment datasets are rebuilt from coded survey comments (`src/voc.py`, `config/voc_rubric.md`), and the six Operations datasets are read from the operations team's own dashboard by `skill/pc-ops-topup/`.
+The nine datasets without SQL are not listed below. The four CX comment datasets are rebuilt from coded survey comments (`src/voc.py`, `config/voc_rubric.md`), and the five Operations datasets (`ops_meta`, `ops_prod`, `ops_service`, `ops_amr`, `ops_difot`) are read from the operations team's own dashboard by `skill/pc-ops-topup/`.
 
 ## Highlights
 
@@ -134,3 +134,4 @@ The ten datasets below have no SQL here. The four CX comment datasets are rebuil
 | Dataset | Title |
 | --- | --- |
 | [`ops_delivery`](ops_delivery.sql) | Delivery promise by warehouse |
+| [`ops_labour`](ops_labour.sql) | Labour cost and cost per order by fulfilment centre (reads Deputy, so it is an Ad-Hoc query) |

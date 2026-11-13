@@ -4,7 +4,7 @@ Make a private dev copy of a Claude dashboard so a git branch can be developed a
 
 | File | What it is |
 | --- | --- |
-| `SKILL.md` | The procedure Claude follows end to end. Ask Claude to "make a dev copy of the Weekly Trading Dashboard for branch `feature/x`" and it follows this |
+| `SKILL.md` | The procedure Claude follows end to end. Ask Claude to "make a dev copy of the <Dashboard Name> for branch `feat/x`" and it follows this |
 | `dev_copy.py` | The deterministic parts: listing the data files to copy, rewriting the dataset documents for the copy, building write batches, and safety checks. Python standard library only, no network access |
 | `test_dev_copy.py` | Tests for `dev_copy.py` |
 

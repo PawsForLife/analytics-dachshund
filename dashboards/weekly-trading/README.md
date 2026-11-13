@@ -31,7 +31,7 @@ The dashboard has ten tabs:
 
 The dashboard is built from 87 datasets, one or more per tab. Most are produced by SQL against the `business_layer` datasets in BigQuery and saved into the dashboard as files. The exceptions are:
 
-- **Operations** (`ops_labour`, `ops_prod`, `ops_service`, `ops_amr`, `ops_difot`, `ops_meta`): read from the operations team's own weekly dashboard rather than queried from BigQuery. A banner shows when that dashboard is behind this one.
+- **Operations** (`ops_prod`, `ops_service`, `ops_amr`, `ops_difot`, `ops_meta`): read from the operations team's own weekly dashboard rather than queried from BigQuery. A banner shows when that dashboard is behind this one. Labour cost and cost per order (`ops_labour`) are no longer read from that dashboard: `sql/ops_labour.sql` calculates them from Deputy timesheets, closed orders and the warehouse budget, using the ops team's on-cost factors and labour-hire rules.
 - **CX comment themes** (`cx_themes`, `cx_clusters`, `cx_driver`, `cx_voc_codes`): new survey comments are coded against a fixed rubric each week and the rows recomputed from the coded-comment store. Comment text is not stored in the dashboard; responses carry a hashed id only.
 
 All weeks are 445 reporting weeks. The reporting week, its month and quarter, the last-year comparison week and the plan label are resolved once from the calendar dataset (`cal`) and used throughout.
@@ -41,7 +41,7 @@ All weeks are 445 reporting weeks. The reporting week, its month and quarter, th
 | When | What |
 | --- | --- |
 | Monday, 8am Sydney time | A scheduled task re-runs the queries and saves the results into the dashboard |
-| Tuesday morning | Operations top-up: re-reads the operations team's dashboard and republishes the six Operations datasets only, using the `pc-ops-topup` skill |
+| Tuesday morning | Operations top-up: re-reads the operations team's dashboard and republishes the six Operations datasets only, using the `pc-ops-topup` skill, and alerts #analytics-dashboard-alerts if the labour cost it calculates differs from the ops team's page |
 
 Each dataset records when it was last updated, and the page shows a stale banner if a refresh has not landed.
 
@@ -49,18 +49,18 @@ Each dataset records when it was last updated, and the page shows a stale banner
 
 | Path | What it holds |
 | --- | --- |
-| `sql/` | The query behind each of the 77 BigQuery-backed datasets, with an index by tab. See `sql/README.md` |
+| `sql/` | The query behind each of the 78 BigQuery-backed datasets, with an index by tab. See `sql/README.md` |
 | `src/` | `refresh_lib.py` (query wrapping, checksums and the publish gate) and `voc.py` (CX comment theme rebuild) |
 | `config/` | `voc_rubric.md`, the fixed rubric used to code survey comments |
 | `templates/` | The dashboard page: `index.html`, `app.js` and `explorer.js` |
-| `skill/pc-ops-topup/` | The Tuesday Operations top-up skill and its `scripts/ops.py` |
+| `skill/pc-ops-topup/` | The Tuesday Operations top-up skill and its `scripts/ops.py`, `scripts/labour.py` (labour check and alert text) and `scripts/ops_labour.sql` (copy of `sql/ops_labour.sql`) |
 | `docs/` | `runbook.md` (the Monday refresh procedure) and `scheduled-tasks.md` |
 
 ### Source of truth
 
 This folder is currently a versioned copy. The live dashboard still runs its queries and page from its own store, and the scheduled refresh reads the runbook and helper scripts from there too. Until the refresh is pointed at this repo, any change to a query, the page or a script must be made in both places.
 
-The other 10 datasets have no SQL: the four CX comment datasets are rebuilt from coded survey comments, and the six Operations datasets are read from the operations team's own dashboard.
+The other 9 datasets have no SQL: the four CX comment datasets are rebuilt from coded survey comments, and the five Operations datasets are read from the operations team's own dashboard.
 
 ## Ownership
 
