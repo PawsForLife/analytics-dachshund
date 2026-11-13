@@ -147,6 +147,16 @@ class PromoteTests(unittest.TestCase):
         code, out, _ = self.plan()
         self.assertEqual(code, 3)
         self.assertIn("cannot set up a new dataset", out)
+        self.assertEqual(self.plan_json()["changes"], [])
+
+    def test_dataset_with_no_stored_query_and_non_file_source_is_blocked(self):
+        doc = live_doc(1, "x"); doc.pop("request"); doc["source"] = {"kind": "query"}
+        wj(f"{self.exp}/datasets/ds1.json", doc)
+        w(f"{self.repo}/sql/ds1.sql", repo_sql(1, "SELECT 1, 2"))
+        code, out, _ = self.plan()
+        self.assertEqual(code, 3)
+        self.assertIn("cannot set up a new dataset", out)
+        self.assertEqual(self.plan_json()["changes"], [])
 
     def test_live_only_dataset_is_a_warning_and_untouched(self):
         wj(f"{self.exp}/datasets/extra.json", live_doc(7, "SELECT 7"))

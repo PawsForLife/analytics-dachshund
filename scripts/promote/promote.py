@@ -148,10 +148,12 @@ def make_plan(repo, live_ds, live_files, live_ops, baseline, include_refresh):
             blocks.append(f"datasets/{ds_id} is in the repo but not on the live dashboard. New datasets need a live dataset and its first data file; promotion cannot create them.")
             continue
         if not doc.get("request"):
-            # The dataset exists and has a data file, but live holds no stored query yet (for
+            # The dataset exists and its data is a file, but live holds no stored query yet (for
             # example Operations datasets that were read from another report). Add one from the
-            # repo. A dataset with no data file is still a new dataset and cannot be created here.
-            if not doc.get("source"):
+            # repo. A missing source, or a source that is not a file, is still not a data file
+            # and cannot be set up here.
+            src = doc.get("source")
+            if not isinstance(src, dict) or src.get("kind") != "file":
                 blocks.append(f"datasets/{ds_id} has no stored query and no data file on the live dashboard. Promotion cannot set up a new dataset.")
                 continue
             req = {"connector": r["connector"], "tool": r["tool"], "args": {"projectId": r["projectId"], "query": r["query"]}}
