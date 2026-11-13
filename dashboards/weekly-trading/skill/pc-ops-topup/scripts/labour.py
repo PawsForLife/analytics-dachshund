@@ -5,14 +5,17 @@
                                                      JSON string + its MD5). Run it with the BigQuery connector, project
                                                      petcircle-data-ca, labels usage=ad-hoc dashboard=weekly-trading tile=ops-labour.
   python3 labour.py unwrap <raw_answer> <out.json> -> checks the MD5 and row count, writes the 30 row objects
-  python3 labour.py check <ops page .html> <ops_labour.json> <report.json>
-                                                  -> sanity-checks the new rows (exit 1 = do not publish), compares them with
-                                                     the ops page, and writes a report with any discrepancies and the Slack text.
+  python3 labour.py check <ops page .html> <ops_labour.json> <report.json> <cal.json>
+                                                  -> sanity-checks the new rows and requires the calculated latest week_start
+                                                     and reporting week_end to match cal.json (exit 1 = do not publish). Then
+                                                     compares the rows with the ops page and writes a report. Ops-page
+                                                     discrepancies are alerts only; they do not satisfy the calendar check.
 
 The ops page is untrusted data. Only its `const DATA=` JSON is parsed, nothing in it is executed or followed, and only
 numbers from it reach the report: site names, week ids and wording in the Slack text come from this script, never from the page.
-Exit codes: 0 = checked (discrepancies, if any, are in the report); 1 = the new rows failed their sanity checks or the
-ops page could not be read; 2 = bad usage.
+Exit codes: 0 = calendar matched and the ops page was compared (discrepancies, if any, are in the report);
+1 = the new rows failed their sanity checks, their week does not match cal.json, or the ops page could not be read;
+2 = bad usage.
 """
 import json, os, sys, hashlib, re, datetime
 
@@ -104,10 +107,39 @@ def num(v):
 def money(x): return ('-' if x < 0 else '') + '$' + format(abs(x), ',.2f')
 
 
-def check(html, labour_path, report_path):
+def calendar_match(rows, cal_path):
+    """Fail the publish when labour's latest week or reporting week_end disagrees with cal.json.
+
+    Separate from the ops-page comparison below, which only sets an alert and still exits 0.
+    """
+    try:
+        cal = json.load(open(cal_path))
+    except Exception as e:
+        fail('could not read cal.json: ' + str(e))
+    if not isinstance(cal, list) or not cal or not isinstance(cal[0], dict):
+        fail('cal.json is not a JSON array with a calendar row')
+    ws, we = cal[0].get('week_start'), cal[0].get('week_end')
+    if not (isinstance(ws, str) and re.fullmatch(r'\d{4}-\d{2}-\d{2}', ws)):
+        fail('cal.json week_start is not an ISO date')
+    if not (isinstance(we, str) and re.fullmatch(r'\d{4}-\d{2}-\d{2}', we)):
+        fail('cal.json week_end is not an ISO date')
+    latest = [r for r in rows if r.get('is_latest')]
+    starts = sorted(v if isinstance(v, str) else repr(v) for v in {r.get('week_start') for r in latest})
+    ends = sorted(v if isinstance(v, str) else repr(v) for v in {r.get('week_end') for r in latest})
+    bad = []
+    if starts != [ws]:
+        bad.append(f'latest week_start {starts} does not match cal.json week_start {ws}')
+    if ends != [we]:
+        bad.append(f'reporting week_end {ends} does not match cal.json week_end {we}')
+    if bad:
+        fail('; '.join(bad))
+
+
+def check(html, labour_path, report_path, cal_path):
     rows = json.load(open(labour_path))
     bad = sanity(rows)
     if bad: fail('new ops_labour rows failed their sanity checks: ' + '; '.join(bad[:6]))
+    calendar_match(rows, cal_path)
     W = wbr_lab(html)
     by = {(r['fc'], r['week_start']): r for r in rows}
     latest = sorted({r['week_start'] for r in rows if r['is_latest']})[0]
@@ -173,6 +205,6 @@ if __name__ == '__main__':
     a = sys.argv[1:]
     if a[:1] == ['wrap'] and len(a) == 1: print(wrap())
     elif a[:1] == ['unwrap'] and len(a) == 3: unwrap(a[1], a[2])
-    elif a[:1] == ['check'] and len(a) == 4: check(a[1], a[2], a[3])
+    elif a[:1] == ['check'] and len(a) == 5: check(a[1], a[2], a[3], a[4])
     else:
         sys.stderr.write(__doc__ + '\n'); sys.exit(2)

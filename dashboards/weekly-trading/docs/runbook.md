@@ -96,6 +96,7 @@ delete their previous assets). If the labour cost, contractor cost, cost per ord
 page beyond the thresholds in `labour.py` (total or contractor cost over $100, cost per order over $0.02, orders
 over 0.25%), or a site that normally uses labour hire shows none, it posts one message to the private Slack channel
 #analytics-dashboard-alerts. The dashboard keeps its own calculated figures; the alert is for the owner to look at.
+Separately, `labour.py check` fails the top-up before upload when the calculated latest `week_start` or the reporting `week_end` differs from `cal.json`. Nothing is published in that case.
 It changes nothing else. If the ops page is still behind, it still publishes (the tab keeps saying which week it shows). Unlike
 step 4c, on failure it publishes nothing and does not write to the ops datasets at all (no lastAttempt).
 Changes to ops.py, labour.py or the bundled ops_labour.sql (which must match sql/ops_labour.sql): the owner reviews the new script and issues a new version of the skill with its new hash;

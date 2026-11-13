@@ -33,7 +33,7 @@ structure and the script needs updating, the owner reviews the new script and is
 skill. Never patch the script during a run.
 
 Approved labour scripts (owner-reviewed; the owner issues a new skill version to change either):
-- `scripts/labour.py`, SHA-256 `6d3f9d9bd38167e904727dbe11454e03a945b7c9db469403d641511c3b36b120` (10490 bytes).
+- `scripts/labour.py`, SHA-256 `59c9b03e386886dacc20bb0622b477b5e8f8b5a45dc739d81291f8baada6caa1` (12231 bytes).
 - `scripts/ops_labour.sql`, SHA-256 `3994eca411ce20bfce2afac55080d26938e79922c1d1f5b961f752b28d56a24c` (10689 bytes). This is a copy of `sql/ops_labour.sql` in the repo and must be
   identical to it; the Monday refresh runs the repo copy.
 
@@ -72,7 +72,7 @@ Approved labour scripts (owner-reviewed; the owner issues a new skill version to
    A page that is behind this dashboard's week is not a failure: the rows are written with
    `ops_meta.held = true` and it is still published.
 
-5a. **Labour.** Calculate `ops_labour` and check it against the OPS page copy from step 4:
+5a. **Labour.** Calculate `ops_labour`, require its week to match `$W/out/cal.json`, and check it against the OPS page copy from step 4:
    1. `python3 -I <this skill's folder>/scripts/labour.py wrap > $W/labour_wrapped.sql`, then run that query exactly as
       printed with the BigQuery connector (see Hard rules for the project and labels). The answer is one row with
       `j`, `h` and `n`. Save the connector's whole answer, unchanged, to `$W/labour_raw.json`. If the connector
@@ -80,10 +80,13 @@ Approved labour scripts (owner-reviewed; the owner issues a new skill version to
    2. `python3 -I <this skill's folder>/scripts/labour.py unwrap $W/labour_raw.json $W/out/ops_labour.json`. It must
       print `ok ... 30 rows`. A checksum mismatch means the answer was not copied exactly: save it again and
       retry once, then go to Failure.
-   3. `python3 -I <this skill's folder>/scripts/labour.py check $W/page/ops.html $W/out/ops_labour.json $W/out/labour_report.json`.
-      Exit code 1 (`LABOUR FAILED: ...`) means the new rows are not fit to publish or the OPS page could not be
-      read: go to Failure with that message. Exit code 0 means checked: if `alert` in the report is true, step 9 sends
-      the alert. Differences do not stop the run; the dashboard gets its own calculated figures.
+   3. `python3 -I <this skill's folder>/scripts/labour.py check $W/page/ops.html $W/out/ops_labour.json $W/out/labour_report.json $W/out/cal.json`.
+      The command first requires the calculated latest `week_start` (rows with `is_latest`) and the reporting `week_end`
+      to equal `week_start` and `week_end` on the first row of `$W/out/cal.json`. Exit code 1 (`LABOUR FAILED: ...`)
+      means that calendar check failed, the new rows are not fit to publish, or the OPS page could not be read:
+      go to Failure with that message and do not upload.
+      Exit code 0 means the calendar matched and the ops-page comparison finished. If `alert` in the report is true, step 9 sends
+      that alert. Those WBR differences do not stop the run, and they do not satisfy the calendar check; the dashboard gets its own calculated figures.
 
 6. **Upload.** For each of the six files (the five from step 5 and `ops_labour.json`), make one Artifact call: `url` = DASH, `asset: true`,
    `file_path` = `$W/out/<id>.json`. Record the new `url` that each result returns. If any upload fails,
