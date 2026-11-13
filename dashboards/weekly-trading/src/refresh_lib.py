@@ -131,13 +131,28 @@ def gate(d):
         dv = sum(r['sessions'] for r in L('mf_device')); hs = L('mf_headline')[0]['sessions']
         if abs(dv - hs) > 0.001 * hs: probs.append(f'device sessions {dv} do not reconcile to the funnel headline {hs}')
     if os.path.exists(os.path.join(d, 'ops_labour.json')):
-        lab = [r for r in L('ops_labour') if r['is_latest']]
+        rows = L('ops_labour')
+        fcs = ['EC', 'BNE', 'MEL', 'PER', 'ALL']
+        weeks = sorted({r['week_start'] for r in rows})
+        if len(weeks) != 6: probs.append(f'ops_labour expected 6 weeks, found {len(weeks)}')
+        by = {(r['fc'], r['week_start']): r for r in rows}
+        for w in weeks:
+            have = sorted(r['fc'] for r in rows if r['week_start'] == w)
+            if have != sorted(fcs):
+                probs.append(f'ops_labour {w} needs one row each for EC, BNE, MEL, PER and National, found {have}')
+                continue
+            site_rows = [by[(fc, w)] for fc in fcs[:4]]
+            nat_row = by[('ALL', w)]
+            for f, tol in (('cost', 1), ('orders', 1), ('hrs', 1), ('cost_tgt', 1)):
+                if abs((nat_row[f] or 0) - sum((r[f] or 0) for r in site_rows)) > tol: probs.append(f'ops_labour National {f} {w} {nat_row[f]} != sum of sites {round(sum((r[f] or 0) for r in site_rows), 2)}')
+            for r in site_rows + [nat_row]:
+                for f in ('cost', 'orders', 'hrs', 'cpo', 'cost_tgt', 'orders_tgt', 'cpo_tgt'):
+                    if r.get(f) is None: probs.append(f'ops_labour {r["fc"]} {w} has no {f}')
+        lab = [r for r in rows if r['is_latest']]
         nat = [r for r in lab if r['fc'] == 'ALL']; sites = [r for r in lab if r['fc'] != 'ALL']
         if len(nat) != 1 or len(sites) != 4: probs.append(f'ops_labour needs one National and four site rows for the latest week, found {len(nat)} and {len(sites)}')
         else:
             n = nat[0]
-            for f, tol in (('cost', 1), ('orders', 1), ('hrs', 1), ('cost_tgt', 1)):
-                if abs((n[f] or 0) - sum((r[f] or 0) for r in sites)) > tol: probs.append(f'ops_labour National {f} {n[f]} != sum of sites {round(sum((r[f] or 0) for r in sites), 2)}')
             for r in lab:
                 if abs(r['cost'] - r['own_cost'] - r['con_cost']) > 0.05: probs.append(f'ops_labour {r["fc"]} cost does not equal own plus contractor')
                 if not r['orders'] or not r['hrs'] or r['cost_tgt'] is None or r['cpo_tgt'] is None: probs.append(f'ops_labour {r["fc"]} has no orders, hours or budget')
