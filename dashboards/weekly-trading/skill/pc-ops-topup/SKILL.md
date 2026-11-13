@@ -33,7 +33,7 @@ structure and the script needs updating, the owner reviews the new script and is
 skill. Never patch the script during a run.
 
 Approved labour scripts (owner-reviewed; the owner issues a new skill version to change either):
-- `scripts/labour.py`, SHA-256 `59c9b03e386886dacc20bb0622b477b5e8f8b5a45dc739d81291f8baada6caa1` (12231 bytes).
+- `scripts/labour.py`, SHA-256 `89d8c43ade3edda28093fe9923beff50635d68372b74031642ad97bc9322332b` (13092 bytes).
 - `scripts/ops_labour.sql`, SHA-256 `3994eca411ce20bfce2afac55080d26938e79922c1d1f5b961f752b28d56a24c` (10689 bytes). This is a copy of `sql/ops_labour.sql` in the repo and must be
   identical to it; the Monday refresh runs the repo copy.
 

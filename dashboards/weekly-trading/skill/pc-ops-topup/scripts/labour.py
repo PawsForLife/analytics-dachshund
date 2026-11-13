@@ -154,8 +154,12 @@ def check(html, labour_path, report_path, cal_path):
             if theirs is None:
                 if w == latest: report['discrepancies'].append({'site': fc, 'week': w, 'metric': 'missing_in_wbr'})
                 continue
-            report['compared'] += 1
             wc, wo, wp, wk_ = num(theirs.get('cost')), num(theirs.get('orders')), num(theirs.get('cpo')), num(theirs.get('conCost'))
+            missing = [label for label, val in (('total labour cost', wc), ('orders closed', wo), ('cost per order', wp), ('contractor cost', wk_)) if val is None]
+            if missing:
+                report['discrepancies'].append({'site': fc, 'week': w, 'metric': 'incomplete', 'missing': missing})
+            else:
+                report['compared'] += 1
             def add(metric, wv, ov, diff): report['discrepancies'].append({'site': fc, 'week': w, 'metric': metric, 'wbr': wv, 'dashboard': ov, 'diff': round(diff, 4)})
             if wc is not None and abs(ours['cost'] - wc) > TOL_COST: add('cost', wc, ours['cost'], ours['cost'] - wc)
             if w == latest:
@@ -186,13 +190,19 @@ def slack_text(rep, by):
     if rep['not_compared']:
         L.append(f"Could not compare: {rep['not_compared']}.")
     names = {'cost': 'total labour cost', 'contractor_cost': 'contractor cost', 'cpo': 'cost per order', 'orders': 'orders closed'}
-    latest = [x for x in rep['discrepancies'] if x['week'] == wk]
-    earlier = [x for x in rep['discrepancies'] if x['week'] != wk]
+    incomplete = [x for x in rep['discrepancies'] if x['metric'] == 'incomplete']
+    latest = [x for x in rep['discrepancies'] if x['week'] == wk and x['metric'] != 'incomplete']
+    earlier = [x for x in rep['discrepancies'] if x['week'] != wk and x['metric'] != 'incomplete']
     def fmt(x):
+        if x['metric'] == 'incomplete': return f"• {SITES[x['site']]}: Ops WBR comparison incomplete, missing {', '.join(x['missing'])}"
         if x['metric'] == 'missing_in_wbr': return f"• {SITES[x['site']]}: not in the Ops WBR"
         if x['metric'] == 'contractor_hours_missing': return f"• {SITES[x['site']]}: no contractor hours in Deputy yet (averages {-x['diff']:.0f} h a week), so labour hire cost may be missing from both the dashboard and the Ops WBR"
         m = x['metric']; f = (lambda v: money(v)) if m in ('cost', 'contractor_cost') else ((lambda v: '$' + format(v, '.3f')) if m == 'cpo' else (lambda v: format(v, ',.0f')))
         return f"• {SITES[x['site']]}, {names[m]}: Ops WBR {f(x['wbr'])}, dashboard {f(x['dashboard'])}"
+    if incomplete:
+        L.append("*Incomplete Ops WBR comparison:*")
+        L += [fmt(x) + (f" (w/c {x['week']})" if x['week'] != wk else '') for x in incomplete[:6]]
+        if len(incomplete) > 6: L.append(f"…and {len(incomplete) - 6} more")
     if latest: L.append(f"*Latest week (w/c {wk}):*"); L += [fmt(x) for x in latest]
     if earlier:
         L.append("*Earlier weeks (total labour cost):*"); L += [fmt(x) + f" (w/c {x['week']})" for x in earlier[:6]]
