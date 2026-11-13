@@ -148,7 +148,27 @@ def make_plan(repo, live_ds, live_files, live_ops, baseline, include_refresh):
             blocks.append(f"datasets/{ds_id} is in the repo but not on the live dashboard. New datasets need a live dataset and its first data file; promotion cannot create them.")
             continue
         if not doc.get("request"):
-            blocks.append(f"datasets/{ds_id} has no stored query on the live dashboard but has SQL in the repo.")
+            # The dataset exists and its data is a file, but live holds no stored query yet (for
+            # example Operations datasets that were read from another report). Add one from the
+            # repo. A missing source, or a source that is not a file, is still not a data file
+            # and cannot be set up here.
+            src = doc.get("source")
+            if not isinstance(src, dict) or src.get("kind") != "file":
+                blocks.append(f"datasets/{ds_id} has no stored query and no data file on the live dashboard. Promotion cannot set up a new dataset.")
+                continue
+            req = {"connector": r["connector"], "tool": r["tool"], "args": {"projectId": r["projectId"], "query": r["query"]}}
+            if r["labels"] is not None:
+                req["args"]["labels"] = r["labels"]
+            patch = {"request": req}
+            if doc.get("title") != r["title"]:
+                patch["title"] = r["title"]
+            if doc.get("description") != r["description"]:
+                patch["description"] = r["description"]
+            patches[("datasets", ds_id)] = patch
+            fields = ["query"] + [f for f in ("title", "description") if f in patch]
+            changes.append({"collection": "datasets", "doc_id": ds_id, "fields": fields, "needs_refresh": True, "adds_stored_query": True})
+            warns.append(f"datasets/{ds_id}: ADDS a stored query where live has none. The scheduled refresh runs stored queries, so confirm the live refresh code handles this dataset before the next refresh.")
+            report.append(f"--- datasets/{ds_id}: NEW stored query (live had none)\n" + diff_text("", r["query"] + "\n", ds_id + ".sql"))
             continue
         L = live_view(doc)
         if (L["connector"], L["tool"]) != (r["connector"], r["tool"]):
